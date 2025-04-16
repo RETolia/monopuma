@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Крестики-нолики</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 80px);
+            grid-gap: 5px;
+        }
+        .cell {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Крестики-нолики</h1>
+    <div id="board"></div>
+    <div id="status">Ход: X</div>
+
+    <script>
+        const board = document.getElementById('board');
+        const statusDiv = document.getElementById('status');
+        let currentPlayer = 'X';
+        let gameState = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+
+        // Создаем игровое поле
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.setAttribute('data-index', i);
+            cell.addEventListener('click', handleCellClick);
+            board.appendChild(cell);
+        }
+
+        function handleCellClick(e) {
+            const index = e.target.getAttribute('data-index');
+            
+            if (gameState[index] !== '' || !gameActive) return;
+            
+            gameState[index] = currentPlayer;
+            e.target.textContent = currentPlayer;
+            
+            checkWinner();
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            statusDiv.textContent = `Ход: ${currentPlayer}`;
+        }
+
+        function checkWinner() {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // строки
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // столбцы
+                [0, 4, 8], [2, 4, 6]             // диагонали
+            ];
+
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    statusDiv.textContent = `Победил: ${gameState[a]}!`;
+                    gameActive = false;
+                    return;
+                }
+            }
+
+            if (!gameState.includes('')) {
+                statusDiv.textContent = 'Ничья!';
+                gameActive = false;
+            }
+        }
+
+        // Для Telegram WebApp
+        if (window.Telegram?.WebApp?.expand) {
+            Telegram.WebApp.expand();
+        }
+    </script>
+</body>
+</html>
