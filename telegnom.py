@@ -5,6 +5,10 @@ from aiogram.enums import ChatType
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import WebAppInfo
+from aiogram import Bot
+from aiogram.types import ForumTopic
+from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 bot = Bot(token="")
 dp = Dispatcher()
 
@@ -19,13 +23,103 @@ async def main():
 def is_allowed_chat(message: types.Message) -> bool:
     return (
         message.chat.type == ChatType.PRIVATE or  # Личные сообщения
-        message.message_thread_id is None  # General (не топик)
+        message.message_thread_id is None or  # General (не топик)
+        message.message_thread_id is not None  # и топик ----------------------временно
     )
 
 
+#-------------------------------------------
+from aiogram import Bot
+from aiogram.types import ChatFullInfo
+from aiogram.enums import ChatType
+@dp.message(Command("chat_info"))
+async def cmd_chat_info(message: types.Message):
+    await print_full_chat_info(bot, message.chat.id)
+async def print_full_chat_info(bot: Bot, chat_id: int):
+    try:
+        chat_info: ChatFullInfo = await bot.get_chat(chat_id)
+        
+        info = f"""
+        🔍 Полная информация о чате:
+        
+        ID: {chat_info.id}
+        Тип: {chat_info.type} ({ChatType(chat_info.type).name})
+        Название: {chat_info.title}
+        Юзернейм: @{chat_info.username if chat_info.username else 'N/A'}
+        Описание: {chat_info.description if chat_info.description else 'N/A'}
+        
+        👥 Участники:
+        - Количество: {chat_info.members_count if hasattr(chat_info, 'members_count') else 'N/A'}
+        
+        
+        ⚙️ Настройки:
+        - Форум: {'Да' if chat_info.is_forum else 'Нет'}
+        - Защита от спама: {'Включена' if chat_info.has_protected_content else 'Выключена'}
+        - Анонимные админы: {'Да' if chat_info.has_aggressive_anti_spam_enabled else 'Нет'}
+        
+        🌐 Связанные чаты:
+        - Основной чат: {chat_info.linked_chat_id if chat_info.linked_chat_id else 'N/A'}
+        
+        
+        🕒 Время создания: {chat_info.birthdate if hasattr(chat_info, 'birthdate') else 'N/A'}
+        Эмодзи статуса: {chat_info.emoji_status_custom_emoji_id or 'N/A'}
+        """
+        
+        print(info)
+        
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
+#-------------------------------------------
+
+
+async def check_topics(bot: Bot, target_chat_id: int):
+    existing_topics = []
+    
+    for thread_id in range(1, 301):  # Проверяем ID от 1 до 300
+        try:
+            # Пытаемся отправить "тихое" сообщение
+            await bot.send_message(
+                chat_id=target_chat_id,
+                message_thread_id=thread_id,
+                text="...",  # Пустое сообщение
+                disable_notification=True
+            )
+            existing_topics.append(thread_id)
+            print(f"Топик {thread_id} существует!")
+            
+        except TelegramBadRequest as e:
+            if "message thread not found" in str(e).lower():
+                print(f"Топик {thread_id} не существует.")
+            else:
+                print(f"Ошибка для {thread_id}: {e}")
+        
+        except Exception as e:
+            print(f"Критическая ошибка: {e}")
+            break
+        
+        await asyncio.sleep(0.01)  # Задержка для соблюдения лимитов
+    
+    return existing_topics
+
+@dp.message(Command("scan_topics"))
+async def scan_topics(message: types.Message):
+    target_chat_id = -1001471637496  # Замените на ID вашей группы
+    
+    # Проверяем, что команда вызвана в нужном чате
+    if message.chat.id != target_chat_id:
+        return await message.answer("Команда доступна только в целевой группе!")
+    
+    result = await check_topics(bot, target_chat_id)
+    await message.answer(f"Найдено топиков: {len(result)}\nID: {result}")
 
 
 
+
+"""
+пользователь вводит id для разрешения/закрытипя 
+бан id топика && id чата 
+
+"""
 
 
 
@@ -82,9 +176,9 @@ async def hi(message: types.Message):
 async def get_thread_id(message: types.Message):
     # Получаем ID топика (если сообщение отправлено в топике)
     thread_id = message.message_thread_id
-    
+    chat_id = message.chat.id  
     if thread_id:
-        await message.reply(f"ID этого топика: {thread_id}")
+        await message.reply(f"ID этого топика: {thread_id} в чате с id {chat_id}")
     else:
         await message.reply("Это сообщение не в топике! Отправьте команду в нужном подчате.")
 # Команда для запуска
